@@ -37,6 +37,13 @@ app.layout = html.Div([
         options=[{'label': i, 'value': i} for i in types],
         placeholder="Select a box type"
     ),
+    dcc.Input(
+        id='search-term',
+        placeholder='Enter a search string (optional)',
+        type='text',
+        value=''
+    ),
+    html.Br(),
     html.Img(id='target_image')
     ])
 
@@ -45,14 +52,20 @@ app.layout = html.Div([
 @app.callback(
     dash.dependencies.Output('target_image', 'src'),
     [dash.dependencies.Input('docid-dropdown', 'value'),
-        dash.dependencies.Input('type-dropdown', 'value')])
-def update_image_src(docid, btype):
+        dash.dependencies.Input('type-dropdown', 'value'),
+        dash.dependencies.Input('search-term', 'value'),
+        ])
+def update_image_src(docid, btype, search_term):
     print(docid, btype)
     docid = docid[0]
     btype = btype
     # output of this gets fed into the IMG tag above ^
-    print(cur.mogrify("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype)}))
-    cur.execute("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype)})
+    if search_term == '':
+        print(cur.mogrify("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype)}))
+        cur.execute("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype)})
+    else:
+        print(cur.mogrify("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)}))
+        cur.execute("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)})
     hit = cur.fetchone()
     if hit is None:
         print("No results...")
@@ -61,6 +74,25 @@ def update_image_src(docid, btype):
         print(static_image_route + hit["target_img_path"])
         return static_image_route + hit["target_img_path"]
 
+#@app.callback(
+#    dash.dependencies.Output('target_image', 'src'),
+#    [dash.dependencies.Input('docid-dropdown', 'value'),
+#        dash.dependencies.Input('type-dropdown', 'value')])
+#def update_image_src(docid, btype):
+#    print(docid, btype)
+#    docid = docid[0]
+#    btype = btype
+#    # output of this gets fed into the IMG tag above ^
+#    print(cur.mogrify("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype)}))
+#    cur.execute("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype)})
+#    hit = cur.fetchone()
+#    if hit is None:
+#        print("No results...")
+#        return ''
+#    else:
+#        print(static_image_route + hit["target_img_path"])
+#        return static_image_route + hit["target_img_path"]
+#
 
 @app.callback(
     dash.dependencies.Output('docid-dropdown', 'value'),
