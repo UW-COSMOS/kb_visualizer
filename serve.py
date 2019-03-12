@@ -32,24 +32,24 @@ app.layout = html.Div([
         value = docids[0],
         placeholder="Select a document",
     ),
-    html.Br(),
     dcc.Dropdown(
         id='type-dropdown',
         options=[{'label': i, 'value': i} for i in types],
         placeholder="Select a box type"
     ),
     html.Img(id='target_image')
-])
+    ])
 
 
 
 @app.callback(
     dash.dependencies.Output('target_image', 'src'),
     [dash.dependencies.Input('docid-dropdown', 'value'),
-    dash.dependencies.Input('type-dropdown', 'value')])
+        dash.dependencies.Input('type-dropdown', 'value')])
 def update_image_src(docid, btype):
+    print(docid, btype)
     docid = docid[0]
-    btype = btype[0]
+    btype = btype
     # output of this gets fed into the IMG tag above ^
     print(cur.mogrify("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype)}))
     cur.execute("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype)})
@@ -60,7 +60,31 @@ def update_image_src(docid, btype):
     else:
         print(static_image_route + hit["target_img_path"])
         return static_image_route + hit["target_img_path"]
-#    return static_image_route + value
+
+
+@app.callback(
+    dash.dependencies.Output('docid-dropdown', 'value'),
+    [dash.dependencies.Input('docid-dropdown', 'options')])
+def set_docid_value(options):
+    print("Setting docid dropdown")
+    return options[0]['value']
+
+@app.callback(
+    dash.dependencies.Output('type-dropdown', 'value'),
+    [dash.dependencies.Input('type-dropdown', 'options')])
+def set_type_value(options):
+    return options[0]['value']
+
+@app.callback(
+    dash.dependencies.Output('type-dropdown', 'options'),
+    [dash.dependencies.Input('docid-dropdown', 'value')])
+def update_types(docid):
+    docid = docid[0]
+    print(cur.mogrify("SELECT DISTINCT substring(target_img_path, '^(?:img/){1}(?:%(docid)s)(?:_input.pdf).*\/(.*[^\d])(:?\d+.png)$') AS type FROM things", {"docid" : AsIs(docid)}))
+    cur.execute("SELECT DISTINCT substring(target_img_path, '^(?:img/){1}(?:%(docid)s)(?:_input.pdf).*\/(.*[^\d])(:?\d+.png)$') AS type FROM things", {"docid" : AsIs(docid)})
+    tmp = [{'label' : i['type'], 'value' : i['type']} for i in cur.fetchall() if i['type'] is not None]
+    print(tmp)
+    return tmp
 
 # Add a static image route that serves images from desktop
 # Be *very* careful here - you don't want to serve arbitrary files
