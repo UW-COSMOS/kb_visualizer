@@ -1,9 +1,11 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
+from dash_table_experiments import DataTable
 import psycopg2, psycopg2.extras
 from psycopg2.extensions import AsIs
 
+import json
 import flask
 import glob
 import os
@@ -15,7 +17,6 @@ cur.execute("SELECT docid FROM docids;")
 docids = cur.fetchall()
 cur.execute("SELECT type FROM types;")
 types = cur.fetchall()
-
 
 
 
@@ -44,35 +45,102 @@ app.layout = html.Div([
         value=''
     ),
     html.Br(),
-    html.Img(id='target_image')
+    html.Div(id='content'),
+    html.Div(id='my-div'),
+    html.Div(DataTable(rows=[{}]), style={'display': 'none'})
     ])
 
+app.config['suppress_callback_exceptions']=True
 
+
+
+#@app.callback(
+#    dash.dependencies.Output(component_id='my-div', component_property='children'),
+#    [dash.dependencies.Input('type-dropdown', 'value')])
+#def update_output_div(input_value):
+#    print(input_value)
+#    return 'You\'ve entered "{}"'.format(input_value)
+
+
+
+
+def build_row(row, headers):
+    """
+    TODO: Docstring for build_row.
+
+    Args:
+        row (TODO): TODO
+
+    Returns: TODO
+
+    """
+    cols = []
+    for header in headers:
+        print(header)
+        if "img" in header:
+            cols.append(html.Td(html.Img(src=static_image_route + row[header])))
+        else:
+            cols.append(html.Td(row[header]))
+    return html.Td(cols)
 
 @app.callback(
-    dash.dependencies.Output('target_image', 'src'),
+    dash.dependencies.Output(component_id='my-div', component_property='children'),
     [dash.dependencies.Input('docid-dropdown', 'value'),
         dash.dependencies.Input('type-dropdown', 'value'),
-        dash.dependencies.Input('search-term', 'value'),
-        ])
-def update_image_src(docid, btype, search_term):
-    print(docid, btype)
-    docid = docid[0]
-    btype = btype
-    # output of this gets fed into the IMG tag above ^
+        dash.dependencies.Input('search-term', 'value')])
+def generate_table(docid, btype, search_term):
+    docid=docid[0]
+
     if search_term == '':
-        print(cur.mogrify("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype)}))
-        cur.execute("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype)})
+#        print(cur.mogrify("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d'", {"docid" : AsIs(docid), "btype" : AsIs(btype)}))
+        cur.execute("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' ", {"docid" : AsIs(docid), "btype" : AsIs(btype)})
     else:
-        print(cur.mogrify("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)}))
-        cur.execute("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)})
-    hit = cur.fetchone()
-    if hit is None:
-        print("No results...")
-        return ''
-    else:
-        print(static_image_route + hit["target_img_path"])
-        return static_image_route + hit["target_img_path"]
+#        print(cur.mogrify("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%'", {"docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)}))
+        cur.execute("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%'", {"docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)})
+    headers = ["target_img_path", "target_unicode", "assoc_img_path", "assoc_unicode"]
+
+    return html.Table(
+            [html.Tr([html.Th(i) for i in headers])] +
+
+            [html.Tr(build_row(row, headers)) for row in cur.fetchall()]
+
+            )
+
+
+    return 'You\'ve entered "{}"'.format((docid, btype, search_term))
+
+#@app.callback(
+#    dash.dependencies.Output('datatable-output', 'children'),
+#    [dash.dependencies.Input('datatable', 'rows')])
+#def update_output(rows):
+#    return html.Pre(
+#        json.dumps(rows, indent=2)
+#    )
+
+#@app.callback(
+#    dash.dependencies.Output('target_image', 'src'),
+#    [dash.dependencies.Input('docid-dropdown', 'value'),
+#        dash.dependencies.Input('type-dropdown', 'value'),
+#        dash.dependencies.Input('search-term', 'value'),
+#        ])
+#def update_image_src(docid, btype, search_term):
+#    print(docid, btype)
+#    docid = docid[0]
+#    btype = btype
+#    # output of this gets fed into the IMG tag above ^
+#    if search_term == '':
+#        print(cur.mogrify("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype)}))
+#        cur.execute("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype)})
+#    else:
+#        print(cur.mogrify("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)}))
+#        cur.execute("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)})
+#    hit = cur.fetchone()
+#    if hit is None:
+#        print("No results...")
+#        return ''
+#    else:
+#        print(static_image_route + hit["target_img_path"])
+#        return static_image_route + hit["target_img_path"]
 
 #@app.callback(
 #    dash.dependencies.Output('target_image', 'src'),
@@ -112,10 +180,9 @@ def set_type_value(options):
     [dash.dependencies.Input('docid-dropdown', 'value')])
 def update_types(docid):
     docid = docid[0]
-    print(cur.mogrify("SELECT DISTINCT substring(target_img_path, '^(?:img/){1}(?:%(docid)s)(?:_input.pdf).*\/(.*[^\d])(:?\d+.png)$') AS type FROM things", {"docid" : AsIs(docid)}))
+#    print(cur.mogrify("SELECT DISTINCT substring(target_img_path, '^(?:img/){1}(?:%(docid)s)(?:_input.pdf).*\/(.*[^\d])(:?\d+.png)$') AS type FROM things", {"docid" : AsIs(docid)}))
     cur.execute("SELECT DISTINCT substring(target_img_path, '^(?:img/){1}(?:%(docid)s)(?:_input.pdf).*\/(.*[^\d])(:?\d+.png)$') AS type FROM things", {"docid" : AsIs(docid)})
     tmp = [{'label' : i['type'], 'value' : i['type']} for i in cur.fetchall() if i['type'] is not None]
-    print(tmp)
     return tmp
 
 # Add a static image route that serves images from desktop
