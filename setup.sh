@@ -1,7 +1,15 @@
-psql "postgresql://postgres:@localhost:54321/dummy" -f schema.sql
+if [ -z $PG_CONN_STR ];
+then
+    echo "Please provide a conn string"
+    exit 1
+else
+    echo $PG_CONN_STR
+fi
+
+psql "$PG_CONN_STR" -f schema.sql
 
 
-psql "postgresql://postgres:@localhost:54321/dummy" -c "\\copy figures(
+psql "$PG_CONN_STR" -c "\\copy figures(
         target_img_path,
         target_unicode,
         target_tesseract,
@@ -10,7 +18,7 @@ psql "postgresql://postgres:@localhost:54321/dummy" -c "\\copy figures(
         assoc_tesseract,
         html_file) FROM  '$(pwd)/output/figures.csv' DELIMITER ',' CSV HEADER;"
 
-psql "postgresql://postgres:@localhost:54321/dummy" -c "\\copy tables(
+psql "$PG_CONN_STR" -c "\\copy tables(
         target_img_path,
         target_unicode,
         target_tesseract,
@@ -21,7 +29,7 @@ psql "postgresql://postgres:@localhost:54321/dummy" -c "\\copy tables(
 
 # copy from output/output.csv
 
-psql "postgresql://postgres:@localhost:54321/dummy" -c "\\copy output(
+psql "$PG_CONN_STR" -c "\\copy output(
 document_name,
 id, 
 text,

@@ -2,6 +2,7 @@ import dash
 import dash_core_components as dcc
 import dash_html_components as html
 import psycopg2, psycopg2.extras
+import sys
 from psycopg2.extensions import AsIs
 
 import json
@@ -9,7 +10,11 @@ import flask
 import glob
 import os
 
-conn = psycopg2.connect("postgres://postgres:@localhost:54321/cosmos_figs")
+if "PG_CONN_STR" not in os.environ:
+    print("Please provide a PG_CONN_STR!")
+    sys.exit(1)
+
+conn = psycopg2.connect(os.environ["PG_CONN_STR"])
 cur = conn.cursor(cursor_factory = psycopg2.extras.DictCursor)
 
 cur.execute("SELECT docid FROM docids;")
