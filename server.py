@@ -49,15 +49,6 @@ app.layout = html.Div([
 app.config['suppress_callback_exceptions']=True
 
 def build_row(row, headers):
-    """
-    TODO: Docstring for build_row.
-
-    Args:
-        row (TODO): TODO
-
-    Returns: TODO
-
-    """
     cols = []
     for header in headers:
         try:
@@ -100,39 +91,6 @@ def generate_table(docid, btype, search_term):
 
     return 'You\'ve entered "{}"'.format((docid, btype, search_term))
 
-#@app.callback(
-#    dash.dependencies.Output('datatable-output', 'children'),
-#    [dash.dependencies.Input('datatable', 'rows')])
-#def update_output(rows):
-#    return html.Pre(
-#        json.dumps(rows, indent=2)
-#    )
-
-#@app.callback(
-#    dash.dependencies.Output('target_image', 'src'),
-#    [dash.dependencies.Input('docid-dropdown', 'value'),
-#        dash.dependencies.Input('type-dropdown', 'value'),
-#        dash.dependencies.Input('search-term', 'value'),
-#        ])
-#def update_image_src(docid, btype, search_term):
-#    print(docid, btype)
-#    docid = docid[0]
-#    btype = btype
-#    # output of this gets fed into the IMG tag above ^
-#    if search_term == '':
-#        print(cur.mogrify("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype)}))
-#        cur.execute("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype)})
-#    else:
-#        print(cur.mogrify("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)}))
-#        cur.execute("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%' LIMIT 1", {"docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)})
-#    hit = cur.fetchone()
-#    if hit is None:
-#        print("No results...")
-#        return ''
-#    else:
-#        print(static_image_route + hit["target_img_path"])
-#        return static_image_route + hit["target_img_path"]
-
 @app.callback(
     dash.dependencies.Output('docid-dropdown', 'value'),
     [dash.dependencies.Input('docid-dropdown', 'options')])
@@ -160,7 +118,6 @@ def update_types(docid):
 
 @app.server.route('/images/<path:image_path>'.format(static_image_route))
 def serve_image(image_path):
-    print("Serving %s" % image_path)
 #    image_name = '{}.png'.format(image_path)
     image_name = '{}'.format(image_path)
     return flask.send_from_directory(image_directory, image_name)
