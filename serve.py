@@ -1,7 +1,6 @@
 import dash
 import dash_core_components as dcc
 import dash_html_components as html
-from dash_table_experiments import DataTable
 import psycopg2, psycopg2.extras
 from psycopg2.extensions import AsIs
 
@@ -24,13 +23,16 @@ image_directory = os.getcwd()
 list_of_images = [os.path.basename(i["target_img_path"]) for i in cur.fetchall()]
 static_image_route = '/dummy/'
 
-app = dash.Dash()
+external_stylesheets = ['https://codepen.io/chriddyp/pen/bWLwgP.css']
+
+app = dash.Dash(__name__, external_stylesheets=external_stylesheets)
 
 app.layout = html.Div([
     dcc.Dropdown(
         id='docid-dropdown',
-        options=[{'label': i, 'value': i} for i in docids],
-        value = docids[0],
+        options=[{"label" : "ALL", "value" : "ALL"}] + [{'label': i, 'value': i} for i in docids] ,
+#        options=[{'label': i, 'value': i} for i in docids] ,
+#        value = docids[0],
         placeholder="Select a document",
     ),
     dcc.Dropdown(
@@ -47,7 +49,7 @@ app.layout = html.Div([
     html.Br(),
     html.Div(id='content'),
     html.Div(id='my-div'),
-    html.Div(DataTable(rows=[{}]), style={'display': 'none'})
+#    html.Div(DataTable(rows=[{}]), style={'display': 'none'})
     ])
 
 app.config['suppress_callback_exceptions']=True
@@ -76,12 +78,14 @@ def build_row(row, headers):
     """
     cols = []
     for header in headers:
-        print(header)
-        if "img" in header:
-            cols.append(html.Td(html.Img(src=static_image_route + row[header])))
-        else:
-            cols.append(html.Td(row[header]))
-    return html.Td(cols)
+        try:
+            if "img" in header:
+                cols.append(html.Td(html.Img(src=static_image_route + row[header], style={"width" : 250}), style={"width" : "25%"}))
+            else:
+                cols.append(html.Td(row[header], style={"width" : "25%"}))
+        except:
+            cols.append(html.Td(style={"width" : "25%"}))
+    return cols
 
 @app.callback(
     dash.dependencies.Output(component_id='my-div', component_property='children'),
@@ -89,7 +93,10 @@ def build_row(row, headers):
         dash.dependencies.Input('type-dropdown', 'value'),
         dash.dependencies.Input('search-term', 'value')])
 def generate_table(docid, btype, search_term):
-    docid=docid[0]
+    if docid == "ALL":
+        docid=""
+    else:
+        docid=docid[0]
 
     if search_term == '':
 #        print(cur.mogrify("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d'", {"docid" : AsIs(docid), "btype" : AsIs(btype)}))
@@ -99,12 +106,14 @@ def generate_table(docid, btype, search_term):
         cur.execute("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%'", {"docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)})
     headers = ["target_img_path", "target_unicode", "assoc_img_path", "assoc_unicode"]
 
-    return html.Table(
-            [html.Tr([html.Th(i) for i in headers])] +
+    table = html.Table(
+            [html.Tr([html.Th(i, style={"width" : "25%"}) for i in headers])] +
 
-            [html.Tr(build_row(row, headers)) for row in cur.fetchall()]
+            [html.Tr(build_row(row, headers)) for row in cur.fetchall()],
+            style={'border':'1px solid black', 'font-size':'0.8rem', 'border-color' : 'black'}
 
             )
+    return table
 
 
     return 'You\'ve entered "{}"'.format((docid, btype, search_term))
@@ -179,8 +188,11 @@ def set_type_value(options):
     dash.dependencies.Output('type-dropdown', 'options'),
     [dash.dependencies.Input('docid-dropdown', 'value')])
 def update_types(docid):
-    docid = docid[0]
-#    print(cur.mogrify("SELECT DISTINCT substring(target_img_path, '^(?:img/){1}(?:%(docid)s)(?:_input.pdf).*\/(.*[^\d])(:?\d+.png)$') AS type FROM things", {"docid" : AsIs(docid)}))
+    if docid=="ALL":
+        docid=".*"
+    else:
+        docid = docid[0]
+    print(cur.mogrify("SELECT DISTINCT substring(target_img_path, '^(?:img/){1}(?:%(docid)s)(?:_input.pdf).*\/(.*[^\d])(:?\d+.png)$') AS type FROM things", {"docid" : AsIs(docid)}))
     cur.execute("SELECT DISTINCT substring(target_img_path, '^(?:img/){1}(?:%(docid)s)(?:_input.pdf).*\/(.*[^\d])(:?\d+.png)$') AS type FROM things", {"docid" : AsIs(docid)})
     tmp = [{'label' : i['type'], 'value' : i['type']} for i in cur.fetchall() if i['type'] is not None]
     return tmp
