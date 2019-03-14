@@ -1,3 +1,5 @@
+#!/bin/sh
+
 if [ -z $PG_CONN_STR ];
 then
     echo "Please provide a conn string"
@@ -8,8 +10,7 @@ fi
 
 psql "$PG_CONN_STR" -f schema.sql
 
-
-psql "$PG_CONN_STR" -c "\\copy figures(
+psql "$PG_CONN_STR" -c "\\copy figures_tmp(
         target_img_path,
         target_unicode,
         target_tesseract,
@@ -18,7 +19,9 @@ psql "$PG_CONN_STR" -c "\\copy figures(
         assoc_tesseract,
         html_file) FROM  '$(pwd)/output/figures.csv' DELIMITER ',' CSV HEADER;"
 
-psql "$PG_CONN_STR" -c "\\copy tables(
+psql "$PG_CONN_STR" -c "INSERT INTO figures SELECT * FROM figures_tmp ON CONFLICT DO NOTHING; DROP TABLE figures_tmp;"
+
+psql "$PG_CONN_STR" -c "\\copy tables_tmp(
         target_img_path,
         target_unicode,
         target_tesseract,
@@ -27,9 +30,11 @@ psql "$PG_CONN_STR" -c "\\copy tables(
         assoc_tesseract,
         html_file) FROM  '$(pwd)/output/tables.csv' DELIMITER ',' CSV HEADER;"
 
+psql "$PG_CONN_STR" -c "INSERT INTO tables SELECT * FROM tables_tmp ON CONFLICT DO NOTHING; DROP TABLE tables_tmp;"
+
 # copy from output/output.csv
 
-psql "$PG_CONN_STR" -c "\\copy output(
+psql "$PG_CONN_STR" -c "\\copy output_tmp(
 document_name,
 id, 
 text,
@@ -83,3 +88,5 @@ symbols_right,
 symbols_page,
 sentence_img,
 equation_img) FROM '$(pwd)/output/output.csv' DELIMITER ',' CSV HEADER;"
+
+psql "$PG_CONN_STR" -c "INSERT INTO output SELECT * FROM output_tmp ON CONFLICT DO NOTHING; DROP TABLE output_tmp;"

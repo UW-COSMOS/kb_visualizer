@@ -8,13 +8,27 @@ from psycopg2.extensions import AsIs
 import json
 import flask
 import glob
+import time
 import os
+import subprocess
 
 if "PG_CONN_STR" not in os.environ:
     print("Please provide a PG_CONN_STR!")
     sys.exit(1)
 
-conn = psycopg2.connect(os.environ["PG_CONN_STR"])
+wait = True
+n_tries = 0
+while wait and n_tries < 10:
+    try:
+        conn = psycopg2.connect(os.environ["PG_CONN_STR"])
+        wait = False
+    except:
+        print("Waiting for db to start up")
+        time.sleep(10)
+
+# TODO: maybe don't try to import every time?
+subprocess.run("./setup.sh", env=os.environ)
+
 cur = conn.cursor(cursor_factory = psycopg2.extras.DictCursor)
 
 cur.execute("SELECT docid FROM docids;")
@@ -77,11 +91,11 @@ def generate_table(docid, btype, search_term):
         docid=docid[0]
 
     if search_term == '':
-#        print(cur.mogrify("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d'", {"docid" : AsIs(docid), "btype" : AsIs(btype)}))
-        cur.execute("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' ", {"docid" : AsIs(docid), "btype" : AsIs(btype)})
+#        print(cur.mogrify("SELECT * FROM figures_and_tables WHERE target_img_path ~ '%(docid)s.*%(btype)s\d'", {"docid" : AsIs(docid), "btype" : AsIs(btype)}))
+        cur.execute("SELECT * FROM figures_and_tables WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' ", {"docid" : AsIs(docid), "btype" : AsIs(btype)})
     else:
-#        print(cur.mogrify("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%'", {"docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)}))
-        cur.execute("SELECT * FROM things WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%'", {"docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)})
+#        print(cur.mogrify("SELECT * FROM figures_and_tables WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%'", {"docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)}))
+        cur.execute("SELECT * FROM figures_and_tables WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%'", {"docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)})
     headers = ["target_img_path", "target_unicode", "assoc_img_path", "assoc_unicode"]
 
     table = html.Table(
@@ -117,7 +131,7 @@ def update_types(docid):
         docid=".*"
     else:
         docid = docid[0]
-    cur.execute("SELECT DISTINCT substring(target_img_path, '^(?:img/){1}(?:%(docid)s)(?:_input.pdf).*\/(.*[^\d])(:?\d+.png)$') AS type FROM things ORDER BY type ASC", {"docid" : AsIs(docid)})
+    cur.execute("SELECT DISTINCT substring(target_img_path, '^(?:img/){1}(?:%(docid)s)(?:_input.pdf).*\/(.*[^\d])(:?\d+.png)$') AS type FROM figures_and_tables ORDER BY type ASC", {"docid" : AsIs(docid)})
     tmp = [{'label' : i['type'], 'value' : i['type']} for i in cur.fetchall() if i['type'] is not None]
     return tmp
 
@@ -128,4 +142,4 @@ def serve_image(image_path):
     return flask.send_from_directory(image_directory, image_name)
 
 if __name__ == '__main__':
-    app.run_server(debug=True, port=8051)
+    app.run_server(host='0.0.0.0', port=8051)
