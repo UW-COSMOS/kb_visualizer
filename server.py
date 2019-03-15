@@ -15,6 +15,10 @@ import subprocess
 if "PG_CONN_STR" not in os.environ:
     print("Please provide a PG_CONN_STR!")
     sys.exit(1)
+if "PG_EQUATION_SCHEMA" in os.environ:
+    schema = os.environ["PG_EQUATION_SCHEMA"]
+else:
+    schema = "public"
 
 wait = True
 n_tries = 0
@@ -27,11 +31,11 @@ while wait and n_tries < 10:
         time.sleep(10)
 
 # TODO: maybe don't try to import every time?
-subprocess.run("./setup.sh", env=os.environ)
+subprocess.run(["./setup.sh", schema], env=os.environ)
 
 cur = conn.cursor(cursor_factory = psycopg2.extras.DictCursor)
 
-cur.execute("SELECT docid FROM docids;")
+cur.execute(f"SELECT docid FROM {schema}.docids;")
 docids = cur.fetchall()
 
 image_directory = os.getcwd()
@@ -92,10 +96,9 @@ def generate_table(docid, btype, search_term):
 
     if search_term == '':
 #        print(cur.mogrify("SELECT * FROM figures_and_tables WHERE target_img_path ~ '%(docid)s.*%(btype)s\d'", {"docid" : AsIs(docid), "btype" : AsIs(btype)}))
-        cur.execute("SELECT * FROM figures_and_tables WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' ", {"docid" : AsIs(docid), "btype" : AsIs(btype)})
+        cur.execute(f"SELECT * FROM {schema}.figures_and_tables WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' ", {"docid" : AsIs(docid), "btype" : AsIs(btype)})
     else:
-#        print(cur.mogrify("SELECT * FROM figures_and_tables WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%'", {"docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)}))
-        cur.execute("SELECT * FROM figures_and_tables WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%'", {"docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)})
+        cur.execute("SELECT * FROM %(schema).figures_and_tables WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%'", {"schema" : AsIs(schema), "docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)})
     headers = ["target_img_path", "target_unicode", "assoc_img_path", "assoc_unicode"]
 
     table = html.Table(
@@ -127,11 +130,13 @@ def set_type_value(options):
     dash.dependencies.Output('type-dropdown', 'options'),
     [dash.dependencies.Input('docid-dropdown', 'value')])
 def update_types(docid):
+    print(f"Getting types for docid {docid}")
     if docid=="ALL":
         docid=".*"
     else:
         docid = docid[0]
-    cur.execute("SELECT DISTINCT substring(target_img_path, '^(?:img/){1}(?:%(docid)s)(?:_input.pdf).*\/(.*[^\d])(:?\d+.png)$') AS type FROM figures_and_tables ORDER BY type ASC", {"docid" : AsIs(docid)})
+    print(cur.mogrify("SELECT DISTINCT substring(target_img_path, '^(?:img/){1}(?:%(docid)s)(?:_input.pdf).*\/(.*[^\d])(:?\d+.png)$') AS type FROM %(schema)s.figures_and_tables ORDER BY type ASC", {"schema" : AsIs(schema), "docid" : AsIs(docid)}))
+    cur.execute("SELECT DISTINCT substring(target_img_path, '^(?:img/){1}(?:%(docid)s)(?:_input.pdf).*\/(.*[^\d])(:?\d+.png)$') AS type FROM %(schema)s.figures_and_tables ORDER BY type ASC", {"schema" : AsIs(schema), "docid" : AsIs(docid)})
     tmp = [{'label' : i['type'], 'value' : i['type']} for i in cur.fetchall() if i['type'] is not None]
     return tmp
 
