@@ -96,9 +96,9 @@ def generate_table(docid, btype, search_term):
 
     if search_term == '':
 #        print(cur.mogrify("SELECT * FROM figures_and_tables WHERE target_img_path ~ '%(docid)s.*%(btype)s\d'", {"docid" : AsIs(docid), "btype" : AsIs(btype)}))
-        cur.execute(f"SELECT * FROM {schema}.figures_and_tables WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' ", {"docid" : AsIs(docid), "btype" : AsIs(btype)})
+        cur.execute(f"SELECT * FROM %(schema)s.figures_and_tables WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' ", {"docid" : AsIs(docid), "btype" : AsIs(btype)})
     else:
-        cur.execute("SELECT * FROM %(schema).figures_and_tables WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%'", {"schema" : AsIs(schema), "docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)})
+        cur.execute("SELECT * FROM %(schema)s.figures_and_tables WHERE target_img_path ~ '%(docid)s.*%(btype)s\d' AND target_unicode ilike '%%%%%(search_term)s%%%%'", {"schema" : AsIs(schema), "docid" : AsIs(docid), "btype" : AsIs(btype), "search_term" : AsIs(search_term)})
     headers = ["target_img_path", "target_unicode", "assoc_img_path", "assoc_unicode"]
 
     table = html.Table(
