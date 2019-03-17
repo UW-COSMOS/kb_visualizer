@@ -10,6 +10,8 @@ fi
 
 echo "Creating stuff in schema $1"
 
+psql "$PG_CONN_STR" -c "CREATE schema $1;"
+
 psql "$PG_CONN_STR" -c "CREATE TABLE IF NOT EXISTS $1.output_tmp (document_name text,
         id int, 
         text text,
