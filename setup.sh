@@ -8,7 +8,7 @@ else
     echo $PG_CONN_STR
 fi
 
-echo "Creating stuff in schema $s"
+echo "Creating stuff in schema $1"
 
 psql "$PG_CONN_STR" -c "CREATE TABLE IF NOT EXISTS $1.output_tmp (document_name text,
         id int, 
@@ -163,9 +163,9 @@ CREATE TABLE IF NOT EXISTS $1.tables (
         assoc_tesseract text,
         html_file text,
         UNIQUE (target_img_path)
-        );
+        );"
 
-CREATE VIEW $1.figures_and_tables AS ( SELECT figures.target_img_path,
+psql "$PG_CONN_STR" -c "CREATE VIEW $1.figures_and_tables AS ( SELECT figures.target_img_path,
         figures.target_unicode,
         figures.target_tesseract,
         figures.assoc_img_path,
@@ -185,14 +185,6 @@ CREATE VIEW $1.figures_and_tables AS ( SELECT figures.target_img_path,
 
 CREATE VIEW $1.docids AS ( SELECT DISTINCT substring(figures.target_img_path, '^(?:img/){1}(.*)?_input.*'::text) AS docid
    FROM $1.figures);"
-
-
-
-
-
-
-
-
 
 psql "$PG_CONN_STR" -c "\\copy $1.figures_tmp(
         target_img_path,
@@ -272,5 +264,6 @@ symbols_right,
 symbols_page,
 sentence_img,
 equation_img) FROM '$(pwd)/output/output.csv' DELIMITER ',' CSV HEADER;"
+
 
 psql "$PG_CONN_STR" -c "INSERT INTO $1.output SELECT * FROM $1.output_tmp ON CONFLICT DO NOTHING; DROP TABLE $1.output_tmp;"
