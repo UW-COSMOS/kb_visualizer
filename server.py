@@ -35,7 +35,7 @@ subprocess.run(["./setup.sh", schema], env=os.environ)
 
 cur = conn.cursor(cursor_factory = psycopg2.extras.DictCursor)
 
-cur.execute(f"SELECT docid FROM {schema}.docids;")
+cur.execute("SELECT DISTINCT substring(figures_and_tables.target_img_path, '^(?:img/){1}(.*)?_input.*'::text) AS docid FROM equations.figures_and_tables;")
 docids = cur.fetchall()
 
 image_directory = os.getcwd()
