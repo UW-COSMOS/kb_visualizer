@@ -31,7 +31,8 @@ while wait and n_tries < 10:
         time.sleep(10)
 
 # TODO: maybe don't try to import every time?
-subprocess.run(["./setup.sh", schema], env=os.environ)
+# data import now handled centrally -- just commenting out for now IAR - 20.Mar.2019
+#subprocess.run(["./setup.sh", schema], env=os.environ)
 
 cur = conn.cursor(cursor_factory = psycopg2.extras.DictCursor)
 
